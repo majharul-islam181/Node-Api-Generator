@@ -1,6 +1,6 @@
 {
   "name": "node-api-maker",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A CLI tool to generate REST API modules (model, controller, route, validator) with one command",
   "main": "index.js",
   "bin": {

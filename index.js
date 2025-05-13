@@ -64,8 +64,8 @@ let mongooseFields = '';
 if (Object.keys(parsedFields).length > 0) {
   for (const [key, type] of Object.entries(parsedFields)) {
     const jsType = type === 'number' ? 'Number' :
-                   type === 'boolean' ? 'Boolean' :
-                   'String';
+      type === 'boolean' ? 'Boolean' :
+        'String';
     mongooseFields += `  ${key}: { type: ${jsType}, required: true },\n`;
   }
 } else {
@@ -120,8 +120,8 @@ let joiFields = '';
 if (Object.keys(parsedFields).length > 0) {
   for (const [key, type] of Object.entries(parsedFields)) {
     const joiType = type === 'number' ? 'Joi.number()' :
-                    type === 'boolean' ? 'Joi.boolean()' :
-                    'Joi.string()';
+      type === 'boolean' ? 'Joi.boolean()' :
+        'Joi.string()';
     joiFields += `  ${key}: ${joiType}.required(),\n`;
   }
 } else {
@@ -192,7 +192,7 @@ const options = {
     openapi: '3.0.0',
     info: {
       title: 'Generated API',
-      version: '1.0.0',
+      version: '1.1.0',
       description: 'Auto-generated Swagger docs'
     },
     components: {
@@ -276,4 +276,78 @@ if (!appJsContent.includes(useLine)) {
 
 fs.writeFileSync(appJsPath, appJsContent);
 console.log('🔌 Route successfully registered in app.js ✅');
+
+// === 7. Generate server.js if not exists ===
+const serverPath = 'server.js';
+if (!fs.existsSync(serverPath)) {
+  const serverCode = `import dotenv from 'dotenv';
+import mongoose from 'mongoose';
+import app from './app.js';
+
+dotenv.config();
+
+const PORT = process.env.PORT || 5000;
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/api-db';
+
+mongoose.connect(MONGO_URI)
+  .then(() => {
+    console.log('✅ MongoDB connected');
+    app.listen(PORT, () => {
+      console.log(\`🚀 Server running on http://localhost:\${PORT}\`);
+    });
+  })
+  .catch((err) => {
+    console.error('❌ MongoDB connection error:', err);
+  });`;
+
+  fs.writeFileSync(serverPath, serverCode);
+  console.log('📡 Created server.js with MongoDB connection logic');
+}
+
+// === 8. Generate .env.example ===
+const envPath = '.env.example';
+if (!fs.existsSync(envPath)) {
+  const envExample = `PORT=5000
+MONGO_URI=mongodb://localhost:27017/api-db`;
+  fs.writeFileSync(envPath, envExample);
+  console.log('📄 Created .env.example');
+}
+
+
+// === 9. Generate package.json if not exists ===
+const pkgPath = 'package.json';
+
+if (!fs.existsSync(pkgPath)) {
+  const defaultPkg = {
+    name: varName + '-api',
+    version: '1.1.0',
+    description: `${modelName} API generated with node-api-maker`,
+    main: 'server.js',
+    type: 'module',
+    scripts: {
+      dev: 'nodemon server.js',
+      start: 'node server.js'
+    },
+    dependencies: {
+      "express": "^4.18.2",
+      "mongoose": "^7.0.0",
+      "joi": "^17.9.2",
+      "cors": "^2.8.5",
+      "dotenv": "^16.3.1",
+      "swagger-jsdoc": "^6.2.8",
+      "swagger-ui-express": "^4.6.3"
+    },
+    devDependencies: {
+      "nodemon": "^3.0.2"
+    },
+    author: "",
+    license: "MIT"
+  };
+
+  fs.writeFileSync(pkgPath, JSON.stringify(defaultPkg, null, 2));
+  console.log('📦 Created package.json with required dependencies');
+  console.log('📥 Now run: npm install');
+}
+
+
 console.log('Free Palestine 🙏 Love From 🇧🇩');
