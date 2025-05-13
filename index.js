@@ -237,7 +237,6 @@ import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './utils/swagger.js';
 
 const app = express();
-const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
@@ -247,9 +246,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 // AUTO-GENERATED-ROUTE-IMPORTS
 // AUTO-GENERATED-ROUTE-USE
 
-app.listen(PORT, () => {
-  console.log(\`🚀 Server running on http://localhost:\${PORT}\`);
-});
+export default app;
 `;
   fs.writeFileSync(appJsPath, appTemplate);
   console.log('📄 Created default app.js with Swagger and placeholders');
@@ -275,46 +272,107 @@ if (!appJsContent.includes(useLine)) {
 }
 
 fs.writeFileSync(appJsPath, appJsContent);
-console.log('🔌 Route successfully registered in app.js ✅');
+// console.log('🔌 Route successfully registered in app.js ✅');
 
-// === 7. Generate server.js if not exists ===
-const serverPath = 'server.js';
-if (!fs.existsSync(serverPath)) {
-  const serverCode = `import dotenv from 'dotenv';
-import mongoose from 'mongoose';
-import app from './app.js';
+
+// === 7. Generate db/db.js ===
+const dbDir = 'db';
+const dbPath = path.join(dbDir, 'db.js');
+if (!fs.existsSync(dbPath)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+
+  const dbCode = `import mongoose from 'mongoose';
+import dotenv from 'dotenv';
 
 dotenv.config();
 
-const PORT = process.env.PORT || 5000;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/api-db';
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/sample-node-api';
 
-mongoose.connect(MONGO_URI)
-  .then(() => {
+export const connectDB = async () => {
+  try {
+    await mongoose.connect(MONGO_URI);
     console.log('✅ MongoDB connected');
-    app.listen(PORT, () => {
-      console.log(\`🚀 Server running on http://localhost:\${PORT}\`);
-    });
-  })
-  .catch((err) => {
-    console.error('❌ MongoDB connection error:', err);
-  });`;
+  } catch (err) {
+    console.error('❌ MongoDB connection failed:', err.message);
+    process.exit(1);
+  }
+};`;
+
+  fs.writeFileSync(dbPath, dbCode);
+  console.log('🔌 Created db/db.js for MongoDB connection logic');
+}
+
+// === 8. Generate server.js ===
+const serverPath = 'server.js';
+if (!fs.existsSync(serverPath)) {
+  const serverCode = `import app from './app.js';
+import { connectDB } from './db/db.js';
+
+const PORT = process.env.PORT || 5000;
+
+connectDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(\`🚀 Server running on http://localhost:\${PORT}\`);
+  });
+});`;
 
   fs.writeFileSync(serverPath, serverCode);
-  console.log('📡 Created server.js with MongoDB connection logic');
+  console.log('🚀 Created server.js (entry point calling connectDB)');
 }
 
-// === 8. Generate .env.example ===
-const envPath = '.env.example';
+
+// === 9. Generate .env.example ===
+const envPath = '.env';
 if (!fs.existsSync(envPath)) {
   const envExample = `PORT=5000
-MONGO_URI=mongodb://localhost:27017/api-db`;
+MONGO_URI=mongodb://localhost:27017/sample-node-api`;
   fs.writeFileSync(envPath, envExample);
-  console.log('📄 Created .env.example');
+  // console.log('📄 Created .env');
 }
 
 
-// === 9. Generate package.json if not exists ===
+// === 10. Generate middlewares/auth.middleware.js if not exists ===
+const middlewareDir = 'middlewares';
+const authMiddlewarePath = path.join(middlewareDir, 'auth.middleware.js');
+
+if (!fs.existsSync(authMiddlewarePath)) {
+  fs.mkdirSync(middlewareDir, { recursive: true });
+  const middlewareTemplate = `export const verifyToken = (req, res, next) => {
+  // TODO: Replace with real token check
+  console.log('✅ verifyToken middleware hit');
+  next();
+};
+
+export const isAdmin = (req, res, next) => {
+  // TODO: Replace with real role check
+  console.log('✅ isAdmin middleware hit');
+  next();
+};`;
+
+  fs.writeFileSync(authMiddlewarePath, middlewareTemplate);
+  // console.log('🛡 Created middlewares/auth.middleware.js');
+}
+
+// === 11. Generate middlewares/validate.middleware.js if not exists ===
+const validateMiddlewarePath = path.join(middlewareDir, 'validate.middleware.js');
+
+if (!fs.existsSync(validateMiddlewarePath)) {
+  const validateTemplate = `export default function validate(schema) {
+  return (req, res, next) => {
+    const { error } = schema.validate(req.body);
+    if (error) {
+      return res.status(400).json({ message: error.details[0].message });
+    }
+    next();
+  };
+}`;
+  fs.writeFileSync(validateMiddlewarePath, validateTemplate);
+  // console.log('✅ Created middlewares/validate.middleware.js');
+}
+
+
+
+// === 12. Generate package.json if not exists ===
 const pkgPath = 'package.json';
 
 if (!fs.existsSync(pkgPath)) {
@@ -346,8 +404,17 @@ if (!fs.existsSync(pkgPath)) {
 
   fs.writeFileSync(pkgPath, JSON.stringify(defaultPkg, null, 2));
   console.log('📦 Created package.json with required dependencies');
-  console.log('📥 Now run: npm install');
+  // console.log('📥 Now run: npm install');
 }
 
 
-console.log('Free Palestine 🙏 Love From 🇧🇩');
+console.log('\n🎉 All files generated successfully!');
+console.log('\x1b[36m%s\x1b[0m', '📦 To get started, run:'); // cyan
+console.log('\x1b[32m%s\x1b[0m', 'npm install');              // green
+console.log('\x1b[32m%s\x1b[0m', 'npm run dev');              // green
+console.log('');
+console.log('\x1b[36m%s\x1b[0m', '🚀 Server will be running at:');
+console.log('\x1b[33m%s\x1b[0m', 'http://localhost:5000');     // yellow
+console.log('\x1b[36m%s\x1b[0m', '📚 Swagger docs:');
+console.log('\x1b[33m%s\x1b[0m', 'http://localhost:5000/api-docs');
+// console.log('\nFree Palestine 🙏 Love From 🇧🇩');
